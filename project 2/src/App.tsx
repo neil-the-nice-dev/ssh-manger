@@ -209,7 +209,6 @@ function App() {
             <Terminal
               session={activeSession}
               onUpdateSession={updateSession}
-              server={activeServer}
             />
           </div>
         )}

@@ -5,10 +5,9 @@ import { TerminalSession, TerminalLine } from '../types/server';
 interface TerminalProps {
   session: TerminalSession;
   onUpdateSession: (session: TerminalSession) => void;
-  server: any; // Remplacer par Server si importé
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ session, onUpdateSession, server }) => {
+export const Terminal: React.FC<TerminalProps> = ({ session, onUpdateSession }) => {
   const [input, setInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -20,7 +19,7 @@ export const Terminal: React.FC<TerminalProps> = ({ session, onUpdateSession, se
     }
   }, [session.history]);
 
-  const handleCommand = async (command: string) => {
+  const handleCommand = (command: string) => {
     const newLine: TerminalLine = {
       id: crypto.randomUUID(),
       type: 'command',
@@ -28,38 +27,27 @@ export const Terminal: React.FC<TerminalProps> = ({ session, onUpdateSession, se
       timestamp: new Date()
     };
 
-    // Si Electron et serveur défini, envoyer la commande en SSH
-    if (window.electronAPI && server) {
-      try {
-        const result = await window.electronAPI.sendCommand(command, {
-          host: server.host,
-          port: server.port,
-          username: server.username,
-          password: server.password,
-          privateKey: server.keyPath // à adapter si clé privée
-        });
-        const outputLine: TerminalLine = {
-          id: crypto.randomUUID(),
-          type: result.error ? 'error' : 'output',
-          content: result.error || result.output,
-          timestamp: new Date()
-        };
-        const updatedHistory = [...session.history, newLine, outputLine];
-        onUpdateSession({ ...session, history: updatedHistory });
-        return;
-      } catch (err: any) {
-        const errorLine: TerminalLine = {
-          id: crypto.randomUUID(),
-          type: 'error',
-          content: err.message || String(err),
-          timestamp: new Date()
-        };
-        const updatedHistory = [...session.history, newLine, errorLine];
-        onUpdateSession({ ...session, history: updatedHistory });
-        return;
-      }
-    }
-    // Sinon, fallback simulation locale
+    // Simulate command output
+    const outputs = getCommandOutput(command);
+    
+    const updatedHistory = [
+      ...session.history,
+      newLine,
+      ...outputs.map(output => ({
+        id: crypto.randomUUID(),
+        type: output.type as 'output' | 'error',
+        content: output.content,
+        timestamp: new Date()
+      }))
+    ];
+
+    onUpdateSession({
+      ...session,
+      history: updatedHistory
+    });
+  };
+
+  const getCommandOutput = (command: string) => {
     const cmd = command.trim().toLowerCase();
     
     if (cmd === 'ls' || cmd === 'ls -la') {
